@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>數學特務：連乘訣解密</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti for final celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- 引入源泉圓體與其他字型 -->
+    <link href="https://cdn.jsdelivr.net/npm/gensen-rounded-web@1.0.1/css/gensen-rounded-tw.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* 定義主字型變數，將源泉圓體設為首選字型 */
+            --main-font: 'GenSenRounded TW', 'Chiron GoRound TC', 'Microsoft JhengHei', sans-serif;
+        }
+
+        body, button, input {
+            /* 套用字型變數至整個頁面 */
+            font-family: var(--main-font);
+            font-optical-sizing: auto;
+            background-color: #f8fafc; /* 柔和底色 */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 錯誤震動動畫 */
+        .shake-red {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+            background-color: #fee2e2 !important;
+            color: #b91c1c !important;
+            border-color: #ef4444 !important;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* 正確動畫 */
+        .correct-pulse {
+            animation: pulse-green 0.6s ease-out both;
+        }
+
+        @keyframes pulse-green {
+            0% { transform: scale(1); background-color: #d1fae5; border-color: #34d399; }
+            50% { transform: scale(1.05); background-color: #a7f3d0; border-color: #10b981; }
+            100% { transform: scale(1); background-color: #10b981; color: white; border-color: #059669; }
+        }
+
+        /* 螺旋解密動畫 (高亮) */
+        .spiral-highlight {
+            animation: highlight-pulse 1.5s forwards;
+            z-index: 10;
+        }
+
+        @keyframes highlight-pulse {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.15); box-shadow: 0 0 20px #fcd34d; background-color: #fef3c7; border-color: #fbbf24; }
+            100% { transform: scale(1.05); box-shadow: 0 0 10px #fbbf24; background-color: #fef3c7; border-color: #f59e0b; color: #b45309; }
+        }
+
+        /* 自定義大按鈕 */
+        .btn-option {
+            transition: all 0.1s ease-in-out;
+            box-shadow: 0 5px 0 #93c5fd; 
+        }
+        .btn-option:active {
+            transform: translateY(5px);
+            box-shadow: 0 0 0 #93c5fd;
+        }
+
+        /* 謎題格掉落動畫 */
+        .drop-in {
+            animation: dropIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes dropIn {
+            0% { transform: translateY(-20px) scale(0.5); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        /* 使 sup 標籤更大更清晰 */
+        sup {
+            font-size: 0.6em;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-6 text-gray-800 flex flex-col items-center">
+
+    <!-- 頂部：標題與說明按鈕 -->
+    <header class="w-full max-w-6xl relative flex flex-col items-center justify-center mb-6 gap-4">
+        <h1 class="text-3xl md:text-4xl font-black text-blue-800 tracking-wider text-center">
+            數學特務：連乘訣解密
+        </h1>
+        <button onclick="toggleInstructions()" class="md:absolute md:right-0 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold py-2 px-6 rounded-full shadow-[0_4px_0_#ca8a04] active:translate-y-1 active:shadow-none transition-all text-lg">
+            遊戲說明
+        </button>
+    </header>
+
+    <!-- 主要內容區 (雙欄佈局) -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
+        
+        <!-- 左欄：題目區 -->
+        <section class="flex flex-col gap-4">
+            <div class="bg-blue-50 border-4 border-blue-200 rounded-3xl p-6 md:p-8 shadow-md flex-1 flex flex-col items-center justify-center text-center">
+                
+                <div class="w-full flex justify-between items-center mb-6">
+                    <span id="q-counter" class="bg-blue-200 text-blue-800 rounded-full px-4 py-1.5 font-bold text-lg shadow-sm">第 1 題 ／ 共 16 題</span>
+                    <span id="q-status" class="text-lg font-bold text-blue-500"></span>
+                </div>
+
+                <p class="text-gray-500 font-bold mb-4 text-xl">請選擇正確的指數記法：</p>
+                <h3 id="question-text" class="text-4xl md:text-5xl font-black text-gray-800 mb-10 min-h-[80px] flex items-center justify-center tracking-widest">
+                    <!-- 題目動態載入 -->
+                </h3>
+
+                <!-- 選擇題選項 (3個) -->
+                <div id="options-container" class="grid grid-cols-1 gap-5 w-full">
+                    <!-- 選項動態載入 -->
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 右欄：4x4 謎題格 -->
+        <section class="bg-green-50 border-4 border-green-200 rounded-3xl p-6 md:p-8 shadow-md flex flex-col items-center justify-center">
+            <h2 class="text-2xl font-extrabold text-green-700 mb-6 text-center">
+                🧩 謎題格
+            </h2>
+            <!-- 4x4 網格 -->
+            <div id="puzzle-grid" class="grid grid-cols-4 grid-rows-4 gap-2 md:gap-3 w-full max-w-[450px] aspect-square">
+                <!-- 16 格由 JS 生成 -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 底部：解密表 -->
+    <section class="w-full max-w-6xl mt-6 bg-pink-50 border-4 border-pink-200 rounded-3xl p-5 md:p-6 shadow-md">
+        <h2 class="text-xl font-extrabold text-pink-700 mb-4 text-center">
+            🔍 解密表 (答案對應符號)
+        </h2>
+        <div id="symbol-table" class="grid grid-cols-4 md:grid-cols-8 gap-3">
+            <!-- 16個對應關係由 JS 動態生成 -->
+        </div>
+    </section>
+
+    <!-- 版權宣告 Footer -->
+    <footer style="margin: 30px auto 10px auto; text-align: center; max-width: 900px; width: 100%;">
+        <div style="color: #64748b; font-size: 12px; line-height: 1.6;">
+            <p style="margin: 4px 0;">改編自康軒版數學課本 B1 數學好好玩：連乘訣；製作：金魚老師</p>
+            <p style="margin: 4px 0;">
+                初版連結：
+                <a href="http://math.tainan.com.tw/2017/09/blog-post_28.html" target="_blank" rel="noopener noreferrer" style="color: #ec4899; text-decoration: underline; text-decoration-style: dotted;">
+                    數學一點也不無聊
+                </a>
+            </p>
+            <p style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
+                本作品基於原版學習單改編，採用 
+                <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh_TW" target="_blank" rel="noopener noreferrer" style="color: #ec4899; text-decoration: underline; text-decoration-style: dotted;">
+                    CC BY-NC-SA 4.0
+                </a> 授權。
+            </p>
+        </div>
+    </footer>
+
+    <!-- ================= 彈跳視窗區 ================= -->
+
+    <!-- 遊戲說明 Modal -->
+    <div id="instructions-modal" class="fixed inset-0 bg-slate-900 bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-[2rem] p-8 max-w-2xl w-full shadow-2xl relative border-4 border-yellow-300 transform scale-95 transition-transform duration-300" id="instructions-content">
+            <button onclick="toggleInstructions()" class="absolute top-5 right-5 text-gray-400 hover:text-red-500 bg-gray-100 rounded-full p-2 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h2 class="text-3xl font-black text-yellow-700 mb-6 text-center">
+                遊戲說明
+            </h2>
+            <div class="space-y-6 text-lg md:text-xl text-gray-700 font-bold leading-relaxed">
+                
+                <!-- 新增：特務情境開場白 -->
+                <div class="text-left text-gray-700 border-2 border-slate-200 rounded-2xl p-4 bg-slate-50">
+                    <div class="text-xl text-slate-800 font-black mb-2">任務代號：指數記法</div>
+                    <div class="text-lg">特務你好！這一次我們要破解國際駭客的電腦密碼。據情報顯示，電腦密碼為一首 13 個國字的童謠。</div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                    <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-xl whitespace-nowrap">步驟 1</span>
+                    <p>計算每道連乘算式，選擇正確的<span class="text-blue-600">指數記法</span>。</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="bg-pink-100 text-pink-700 px-3 py-1 rounded-xl whitespace-nowrap">步驟 2</span>
+                    <p>答對後，系統會自動比對解密表，將<span class="text-pink-600">注音符號</span>填入 16 格謎題中。</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-xl whitespace-nowrap">步驟 3</span>
+                    <p>全部完成後，請從 第 10 格 開始，順時針螺旋向外閱讀<br><span class="text-[0.85em] text-[#64748b]">（路線：10 → 6 → 7 → 11 → 15 → 14 → 13 → 9 → 5 → 1 → 2 → 3 → 4 → 8 → 12 → 16）</span><br>找出國際駭客的電腦密碼！</p>
+                </div>
+            </div>
+            <div class="mt-8 text-center">
+                <button onclick="toggleInstructions()" class="bg-blue-500 hover:bg-blue-600 text-white font-black text-2xl py-4 px-12 rounded-full shadow-[0_5px_0_#2563eb] active:translate-y-1 active:shadow-none transition-all w-full md:w-auto">
+                    我準備好了！
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最終過關 Modal -->
+    <div id="final-modal" class="fixed inset-0 bg-slate-900 bg-opacity-70 z-50 flex items-center justify-center p-4 backdrop-blur-md hidden opacity-0 transition-opacity duration-500">
+        <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 border-8 border-yellow-400 rounded-[2rem] p-8 md:p-12 max-w-3xl w-full shadow-2xl text-center transform scale-90 transition-transform duration-500" id="final-content">
+            <h2 class="text-4xl md:text-5xl font-black text-yellow-800 mb-6 drop-shadow-sm">🎉 任務完成！</h2>
+            <p class="text-2xl text-yellow-700 font-bold mb-8">按照螺旋順序讀出密語了嗎？</p>
+            <div class="inline-block bg-white border-4 border-yellow-500 rounded-3xl p-8 shadow-inner mb-8">
+                <!-- 螺旋解讀出來的密語展示 -->
+                <span class="text-4xl md:text-6xl font-black text-red-500 tracking-widest leading-normal">
+                    ㄇㄋ∨ㄉ<br>一ˋㄎㄞ<br>厂ㄨㄚㄦ<br>丶ㄕˊ一
+                </span>
+            </div>
+            <div class="flex justify-center gap-4">
+                <button onclick="location.reload()" class="bg-green-500 hover:bg-green-600 text-white font-black text-2xl py-4 px-10 rounded-full shadow-[0_5px_0_#16a34a] active:translate-y-1 active:shadow-none transition-all">
+                    再來玩一次
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 程式邏輯 -->
+    <script>
+        // --- 1. 遊戲資料設計 ---
+        // 使用 base 和 exp，方便動態生成正確的 HTML (帶 <sup>) 及錯誤選項
+        const gameData = [
+            { id: 1,  q: '(-2)×(-2)×(-2)', base: '(-2)', exp: '3', sym: 'ㄨ' },
+            { id: 2,  q: '9×9', base: '9', exp: '2', sym: 'ㄚ' },
+            { id: 3,  q: '3×3×3×3×3×3', base: '3', exp: '6', sym: 'ㄦ' },
+            { id: 4,  q: '25×25×25×25', base: '25', exp: '4', sym: '丶' },
+            { id: 5,  q: '-5×5×5', base: '-5', exp: '3', sym: '厂' },
+            { id: 6,  q: '(-2)×(-2)×(-2)×(-2)', base: '(-2)', exp: '4', sym: 'ㄋ' },
+            { id: 7,  q: '(-7)×(-7)×(-7)×(-7)×(-7)', base: '(-7)', exp: '5', sym: '∨' },
+            { id: 8,  q: '-3×3×3×3×3×3', base: '-3', exp: '6', sym: 'ㄕ' },
+            { id: 9,  q: '3×3×3×3×3', base: '3', exp: '5', sym: 'ㄞ' },
+            { id: 10, q: '-3×3', base: '-3', exp: '2', sym: 'ㄇ' },
+            { id: 11, q: '7×7×7×7×7', base: '7', exp: '5', sym: 'ㄉ' },
+            { id: 12, q: '-3×3×3×3×3', base: '-3', exp: '5', sym: 'ˊ' },
+            { id: 13, q: '(-3)×(-3)', base: '(-3)', exp: '2', sym: 'ㄎ' },
+            { id: 14, q: '(-25)×(-25)×(-25)×(-25)', base: '(-25)', exp: '4', sym: 'ˋ' },
+            { id: 15, q: '(-2)×(-2)×(-2)×(-2)×(-2)×(-2)', base: '(-2)', exp: '6', sym: '一' },
+            { id: 16, q: '2×2×2×2×2×2', base: '2', exp: '6', sym: '一' }
+        ];
+
+        // 產生選項邏輯 (1正確 + 2干擾)
+        function generateOptions(item) {
+            const correctHTML = `${item.base}<sup>${item.exp}</sup>`;
+            // 干擾 1：變成乘法 (例: 9×2)
+            const wrong1HTML = `${item.base}×${item.exp}`; 
+            
+            // 干擾 2：針對不同題型給予合理的錯誤概念
+            let wrong2HTML = '';
+            if (item.base.includes('(')) {
+                // 有括號的，拿掉括號 (例: (-2)³ -> -2³)
+                wrong2HTML = `${item.base.replace(/[()]/g, '')}<sup>${item.exp}</sup>`;
+            } else if (item.base.startsWith('-')) {
+                // 沒括號但有負號的，加上括號 (例: -5³ -> (-5)³)
+                wrong2HTML = `(${item.base})<sup>${item.exp}</sup>`;
+            } else {
+                // 顛倒底數與指數 (例: 9² -> 2⁹)
+                wrong2HTML = `${item.exp}<sup>${item.base}</sup>`;
+            }
+
+            return shuffleArray([
+                { html: correctHTML, isCorrect: true },
+                { html: wrong1HTML, isCorrect: false },
+                { html: wrong2HTML, isCorrect: false }
+            ]);
+        }
+
+        // --- 2. 狀態與 DOM 元素 ---
+        let currentIndex = 0;
+        const totalQuestions = gameData.length;
+        let isAnimating = false;
+
+        const qCounter = document.getElementById('q-counter');
+        const qStatus = document.getElementById('q-status');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const symbolTableContainer = document.getElementById('symbol-table');
+        const puzzleGridContainer = document.getElementById('puzzle-grid');
+        
+        const instModal = document.getElementById('instructions-modal');
+        const instContent = document.getElementById('instructions-content');
+        const finalModal = document.getElementById('final-modal');
+        const finalContent = document.getElementById('final-content');
+
+        // --- 3. 初始化 ---
+        function initGame() {
+            renderSymbolTable();
+            renderPuzzleGrid();
+            loadQuestion(currentIndex);
+            // 遊戲一開始自動顯示說明
+            setTimeout(() => toggleInstructions(), 500);
+        }
+
+        // --- 4. 渲染函數 ---
+        // 渲染底部解密表
+        function renderSymbolTable() {
+            symbolTableContainer.innerHTML = '';
+            gameData.forEach(data => {
+                const cell = document.createElement('div');
+                cell.className = 'flex flex-col rounded-xl overflow-hidden border-2 border-pink-200 bg-white shadow-sm';
+                
+                const topPart = document.createElement('div');
+                topPart.className = 'bg-pink-100 text-pink-800 text-lg md:text-2xl font-black py-2 text-center';
+                topPart.innerText = data.sym;
+                
+                const botPart = document.createElement('div');
+                botPart.className = 'py-2 px-1 text-center text-gray-700 text-sm md:text-base font-bold flex-1 flex items-center justify-center';
+                botPart.innerHTML = `${data.base}<sup>${data.exp}</sup>`;
+
+                cell.appendChild(topPart);
+                cell.appendChild(botPart);
+                symbolTableContainer.appendChild(cell);
+            });
+        }
+
+        // 渲染右側 4x4 謎題格
+        function renderPuzzleGrid() {
+            puzzleGridContainer.innerHTML = '';
+            for (let i = 1; i <= 16; i++) {
+                const box = document.createElement('div');
+                box.id = `puzzle-box-${i}`;
+                box.className = 'bg-white border-2 border-green-300 rounded-xl md:rounded-2xl flex relative items-center justify-center overflow-hidden transition-all duration-300 shadow-sm';
+                
+                const numberLabel = document.createElement('span');
+                numberLabel.className = 'absolute top-1.5 left-2 text-xs md:text-sm font-black text-green-500';
+                numberLabel.innerText = i;
+
+                const symLabel = document.createElement('span');
+                symLabel.id = `puzzle-sym-${i}`;
+                symLabel.className = 'text-4xl md:text-5xl font-black text-green-800 opacity-0'; // 初始隱藏
+                
+                box.appendChild(numberLabel);
+                box.appendChild(symLabel);
+                puzzleGridContainer.appendChild(box);
+            }
+        }
+
+        // 載入題目
+        function loadQuestion(index) {
+            if (index >= totalQuestions) {
+                triggerEndgameSequence();
+                return;
+            }
+
+            const data = gameData[index];
+            qCounter.innerText = `第 ${index + 1} 題 ／ 共 ${totalQuestions} 題`;
+            qStatus.innerText = '';
+            qStatus.className = 'text-lg font-bold text-blue-500';
+            questionText.innerText = data.q;
+            
+            const options = generateOptions(data);
+            optionsContainer.innerHTML = '';
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-option w-full py-4 md:py-6 px-6 text-2xl md:text-3xl font-black text-blue-800 bg-blue-100 border-2 border-blue-300 rounded-2xl hover:bg-blue-200 hover:border-blue-400 flex items-center justify-center gap-2';
+                btn.innerHTML = opt.html;
+                btn.onclick = (e) => handleAnswer(opt.isCorrect, data, e.currentTarget);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        // --- 5. 互動邏輯 ---
+        function handleAnswer(isCorrect, data, btnElement) {
+            if (isAnimating) return;
+            
+            if (isCorrect) {
+                isAnimating = true;
+                qStatus.innerText = '答對了！';
+                qStatus.className = 'text-lg font-bold text-green-600';
+                
+                btnElement.classList.add('correct-pulse');
+                
+                // 延遲一點填入謎題格
+                setTimeout(() => {
+                    const puzzleBox = document.getElementById(`puzzle-box-${data.id}`);
+                    const symLabel = document.getElementById(`puzzle-sym-${data.id}`);
+                    
+                    puzzleBox.classList.add('bg-green-200', 'border-green-500');
+                    symLabel.innerText = data.sym;
+                    symLabel.classList.remove('opacity-0');
+                    symLabel.classList.add('drop-in');
+                    
+                    // 準備下一題
+                    setTimeout(() => {
+                        currentIndex++;
+                        isAnimating = false;
+                        loadQuestion(currentIndex);
+                    }, 800);
+
+                }, 400);
+
+            } else {
+                // 答錯
+                btnElement.classList.add('shake-red');
+                qStatus.innerText = '再試一次！';
+                qStatus.className = 'text-lg font-bold text-red-500';
+                setTimeout(() => {
+                    btnElement.classList.remove('shake-red');
+                }, 500);
+            }
+        }
+
+        // --- 6. 結局：螺旋動畫與揭曉 ---
+        function triggerEndgameSequence() {
+            qCounter.innerText = '任務完成！';
+            qStatus.innerText = '開始解密...';
+            questionText.innerText = '螺旋解密中...';
+            optionsContainer.innerHTML = '';
+            
+            // 順時針螺旋路徑 (1-based index for the 4x4 grid)
+            const spiralPath = [10, 6, 7, 11, 15, 14, 13, 9, 5, 1, 2, 3, 4, 8, 12, 16];
+            let delay = 0;
+
+            spiralPath.forEach((id, idx) => {
+                setTimeout(() => {
+                    const box = document.getElementById(`puzzle-box-${id}`);
+                    box.classList.add('spiral-highlight');
+                    
+                    // 若是最後一格，動畫跑完後顯示通關畫面
+                    if (idx === spiralPath.length - 1) {
+                        setTimeout(() => {
+                            showFinalModal();
+                            triggerConfetti();
+                        }, 1500);
+                    }
+                }, delay);
+                delay += 400; // 每格間隔 0.4 秒
+            });
+        }
+
+        // --- 7. Modal 與特效工具 ---
+        function toggleInstructions() {
+            if (instModal.classList.contains('hidden')) {
+                instModal.classList.remove('hidden');
+                // 觸發漸顯動畫
+                setTimeout(() => {
+                    instModal.classList.remove('opacity-0');
+                    instContent.classList.remove('scale-95');
+                }, 10);
+            } else {
+                instModal.classList.add('opacity-0');
+                instContent.classList.add('scale-95');
+                setTimeout(() => {
+                    instModal.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        function showFinalModal() {
+            finalModal.classList.remove('hidden');
+            setTimeout(() => {
+                finalModal.classList.remove('opacity-0');
+                finalContent.classList.remove('scale-90');
+            }, 10);
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function triggerConfetti() {
+            var duration = 4000;
+            var end = Date.now() + duration;
+
+            (function frame() {
+                confetti({ particleCount: 6, angle: 60, spread: 60, origin: { x: 0 }, colors: ['#fbbf24', '#f87171', '#34d399', '#60a5fa'] });
+                confetti({ particleCount: 6, angle: 120, spread: 60, origin: { x: 1 }, colors: ['#fbbf24', '#f87171', '#34d399', '#60a5fa'] });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+
+        // 啟動
+        window.onload = initGame;
+    </script>
+</body>
+</html>
